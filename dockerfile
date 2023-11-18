@@ -9,6 +9,6 @@ COPY App/ .
 
 EXPOSE 8000 8000
 
-RUN go build -v -o /usr/local/bin/app ./...
-
+RUN rm -f /usr/src/app/app
+RUN go build -v -o /usr/src/app ./...
 CMD ["go", "run", "main.go"]
