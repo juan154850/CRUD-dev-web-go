@@ -1,0 +1,9 @@
+version: '3.7'
+
+services:
+  dev-wev-dockerized:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./App:/usr/src/app
