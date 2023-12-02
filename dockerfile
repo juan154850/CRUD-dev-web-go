@@ -2,10 +2,10 @@ FROM golang:1.21
 
 WORKDIR /usr/src/app
 
-COPY App/go.mod App/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
-COPY App/ .
+COPY . .
 
 EXPOSE 8000 8000
 

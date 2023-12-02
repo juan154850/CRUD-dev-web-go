@@ -1,11 +1,10 @@
-package repository
+package Repository
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
-
 	"github.com/jmoiron/sqlx"
 )
 
