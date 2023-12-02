@@ -7,3 +7,24 @@ services:
       - "8000:8000"
     volumes:
       - ./App:/usr/src/app
+  db: 
+    image: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment: 
+      POSTGRES_PASSWORD: devWebPassword
+      POSTGRES_USER: devWebUser
+      POSTGRES_DB: crudDevWeb
+  phpmyadmin:
+      image: dpage/pgadmin4
+      restart: always
+      ports:
+        - "8080:80"
+      environment:
+        PGADMIN_DEFAULT_EMAIL: admin@devweb.com
+        PGADMIN_DEFAULT_PASSWORD: devWebPassword
+      depends_on:
+        - db
+
+
