@@ -1,99 +1,125 @@
+// Controllers/movieController.go
 package Controllers
 
-// import (
-//     "encoding/json"
-//     "net/http"
-// 	Models "github.com/juan154850/App/Models"
-// 	repository "github.com/juan154850/App/Repository"
-// )
+import (
+	"context"
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v4"
+	"github.com/juan154850/App/Database"
+	"github.com/juan154850/App/Models"
+	"net/http"
+	"strconv"
+)
 
+func GetMovies(c *gin.Context) {
+	rows, err := Database.Conn.Query(context.Background(), "SELECT * FROM movies")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
 
-// var (
-//     updateQuery = "UPDATE movies SET title=:title, director=:director, genre=:genre, description=:description, year=:year, calification=:calification, duration=:duration WHERE id=:id;"
-//     deleteQuery = "DELETE FROM movies WHERE id=$1;"
-//     selectQuery = "SELECT id, title, director, genre, description, year, calification, duration FROM movies WHERE id=$1;"
-//     listQuery   = "SELECT id, title, director, genre, description, year, calification, duration FROM movies LIMIT $1 OFFSET $2;"
-//     createQuery = "INSERT INTO movies (id, title, director, genre, description, year, calification, duration) VALUES (:id, :title, :director, :genre, :description, :year, :calification, :duration) RETURNING id;"
-// )
+	var movies []Models.Movie
+	for rows.Next() {
+		var movie Models.Movie
+		err = rows.Scan(&movie.ID, &movie.Title, &movie.Director, &movie.Genre, &movie.Description, &movie.Year, &movie.Calification, &movie.Duration)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		movies = append(movies, movie)
+	}
 
-// type Controller struct{
-// 	repo repository.Repository
-// }
-// func NewController(repo repository.Repository) *Controller{
-// 	return &Controller{repo: repo}
-// }
+	c.JSON(http.StatusOK, movies)
+}
 
+func GetMovieByID(c *gin.Context, id int) {
+	row := Database.Conn.QueryRow(context.Background(), "SELECT * FROM movies WHERE id = $1", id)
+	var movie Models.Movie
+	err := row.Scan(&movie.ID, &movie.Title, &movie.Director, &movie.Genre, &movie.Description, &movie.Year, &movie.Calification, &movie.Duration)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No movie found with given id"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, movie)
+}
 
-// func (c *Controller) CreateMovie(w http.ResponseWriter, r *http.Request)(int,error){
-// 	var newMovie Models.Movie
-// 	err := json.NewDecoder(r.Body).Decode(&newMovie)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return 0, err 
-// 	}
+func CreateMovie(c *gin.Context) {
+	var movie Models.Movie
+	if err := c.ShouldBindJSON(&movie); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-// 	id, err = c.repo.CreateMovie(newMovie)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return 0, err 
-// 	}
-// 	w.WriteHeader(http.StatusCreated)
-// 	return id, nil
-// }
+	movie.ID = 0 // Set ID to 0 to ensure the database generates a new ID
 
+	row := Database.Conn.QueryRow(context.Background(), "SELECT 1 FROM movies WHERE title = $1 OR description = $2", movie.Title, movie.Description)
+	var exists int
+	err := row.Scan(&exists)
+	if err != pgx.ErrNoRows {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Movie with this title or description already exists"})
+		return
+	}
 
-// func (c *Controller) ReadMovie(w http.ResponseWriter, r *http.Request)([]byte,error){
-// 	movie, err := c.repo.ReadMovie()
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return nil, err
-// 	}
-// 	movieJson, err := json.Marshal(item)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return nil, err
-// 	}
-// 	w.WriteHeader(http.StatusOK)
-// 	return movieJson, nil
-// }
+	_, err = Database.Conn.Exec(context.Background(), "INSERT INTO movies (title, director, genre, description, year, calification, duration) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		movie.Title, movie.Director, movie.Genre, movie.Description, movie.Year, movie.Calification, movie.Duration)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-// func (c *Controller) ListMovies(w http.ResponseWriter, r *http.Request, limit, offset int)([]byte,error){
-// 	movies, err := c.repo.ListMovies(limit,offset)
-// 	if err != nil{
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return nil, err 
-// 	}
-// 	moviesJson, err := json.Marshal(movies)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return nil, err 
-// 	}
-// 	w.WriteHeader(http.StatusOK)
-// 	return moviesJson, nil
-// }
+	c.JSON(http.StatusCreated, gin.H{"status": "Movie created successfully"})
+}
 
-// func (c *Controller) UpdateMovie(w http.ResponseWriter, r *http.Request, id int) error {
-// 	var updateMovie Models.Item
-// 	err := json.NewDecoder(r.Body).Decode(&updateMovie)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return err
-// 	}
-// 	err = c.repo.UpdateMovie(updateMovie, id)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return err
-// 	}
-// 	w.WriteHeader(http.StatusOK)
-// 	return nil
-// }
+func UpdateMovie(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid movie ID"})
+		return
+	}
 
-// func (c *Controller) DeleteMovie(w http.ResponseWriter, r *http.Request, id int) error {
-// 	err := c.repo.DeleteMovie(id)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return err
-// 	}
-// 	w.WriteHeader(http.StatusOK)
-// 	return nil
-// }
+	var movie Models.Movie
+	if err := c.ShouldBindJSON(&movie); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	cmdTag, err := Database.Conn.Exec(context.Background(), "UPDATE movies SET title = $1, director = $2, genre = $3, description = $4, year = $5, calification = $6, duration = $7 WHERE id = $8",
+		movie.Title, movie.Director, movie.Genre, movie.Description, movie.Year, movie.Calification, movie.Duration, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if cmdTag.RowsAffected() > 0 {
+		c.JSON(http.StatusOK, gin.H{"status": "Movie updated successfully"})
+	} else {
+		c.JSON(http.StatusNotFound, gin.H{"status": "No movie found with given id"})
+	}
+}
+
+func DeleteMovie(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid movie ID"})
+		return
+	}
+
+	cmdTag, err := Database.Conn.Exec(context.Background(), "DELETE FROM movies WHERE id = $1", id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if cmdTag.RowsAffected() > 0 {
+		c.JSON(http.StatusOK, gin.H{"status": "Movie deleted successfully"})
+	} else {
+		c.JSON(http.StatusNotFound, gin.H{"status": "No movie found with given id"})
+	}
+}

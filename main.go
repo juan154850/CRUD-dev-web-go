@@ -9,10 +9,12 @@ import (
 func setupRouter() *gin.Engine {
 	r := gin.Default()
 
-	//routers
-	r.GET("/dada", handlers.GetMovies)
+	//routers	
 	r.GET("/movies", handlers.GetMovies)
 	r.GET("movies/:id", handlers.GetMovieByID)
+	r.POST("/movies", handlers.CreateMovie)
+	r.PUT("/movies/:id", handlers.UpdateMovie)
+	r.DELETE("/movies/:id", handlers.DeleteMovie)
 
 	return r
 }

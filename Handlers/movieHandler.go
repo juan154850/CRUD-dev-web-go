@@ -1,32 +1,34 @@
 package Handlers
 
 import (
-	Models "github.com/juan154850/App/Models"
 	"net/http"
+	"strconv"
 	"github.com/gin-gonic/gin"
+	"github.com/juan154850/App/Controllers"
 )
 
-// serializer
-var movies = []Models.Movie{
-	{ID: "1", Title: "The Godfather", Director: "Francis Ford Coppola", Genre: "Drama", Description: "The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.", Year: 1972, Calification: 9.2, Duration: 175},
-	{ID: "2", Title: "The Godfather: Part II", Director: "Francis Ford Coppola", Genre: "Drama", Description: "The early life and career of Vito Corleone in 1920s New York City is portrayed, while his son, Michael, expands and tightens his grip on the family crime syndicate.", Year: 1974, Calification: 9.0, Duration: 202},
-	{ID: "3", Title: "The Dark Knight", Director: "Christopher Nolan", Genre: "Action", Description: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.", Year: 2008, Calification: 9.0, Duration: 152},
-}
-
 func GetMovies(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, movies)
+	Controllers.GetMovies(c)
 }
 
 func GetMovieByID(c *gin.Context) {
-
-	id := c.Param("id")
-
-	for _, a := range movies {
-		if a.ID == id {
-			c.IndentedJSON(http.StatusOK, a)
-			return
-		}
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid movie ID"})
+		return
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "movie not found"})
+	Controllers.GetMovieByID(c, id)
+}
 
+func CreateMovie(c *gin.Context) {
+	Controllers.CreateMovie(c)
+}
+
+func UpdateMovie(c *gin.Context) {
+	Controllers.UpdateMovie(c)
+}
+
+func DeleteMovie(c *gin.Context) {
+	Controllers.DeleteMovie(c)
 }
