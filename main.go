@@ -1,9 +1,8 @@
 package main
 
 import (
-	_ "fmt"
-
-	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"	
+	Database "github.com/juan154850/App/Database"
 	handlers "github.com/juan154850/App/Handlers"
 )
 
@@ -19,6 +18,10 @@ func setupRouter() *gin.Engine {
 }
 
 func main() {
+
+	Database.InitDB()
+	defer Database.CloseDB()
+
 	r := setupRouter()
 	r.Run(":8000")
 }
